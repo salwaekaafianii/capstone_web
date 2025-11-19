@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Tambah Customer</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: #f4f4f4;
+        }
+        .navbar {
+            background: #ff9800;
+            padding: 15px 25px;
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+        }
+        .sidebar {
+            width: 250px;
+            background: #ff9800;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            padding-top: 70px;
+            color: white;
+        }
+        .sidebar a {
+            display: block;
+            text-decoration: none;
+            padding: 14px 20px;
+            color: white;
+            font-size: 16px;
+        }
+        .sidebar a:hover {
+            background: #e68900;
+        }
+        .content {
+            margin-left: 260px;
+            padding: 25px;
+        }
+        .form-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+            max-width: 500px;
+        }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        input[type=text], input[type=email], input[type=password] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+        .btn-save {
+            background: #ff9800;
+            padding: 10px 16px;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .btn-save:hover {
+            background: #e68900;
+        }
+    </style>
+</head>
+<body>
+
+<div class="navbar">Tambah Customer</div>
+
+<div class="sidebar">
+    <a href="/admin">Dashboard</a>
+    <a href="/admin/tukang">Kelola Tukang</a>
+    <a href="/admin/customers">Kelola Customer</a>
+    <a href="/admin/orders">Kelola Pesanan</a>
+    <a href="/logout">Logout</a>
+</div>
+
+<div class="content">
+    <div class="form-box">
+        <form action="/admin/customers/add" method="POST">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" required>
+            </div>
+
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" required>
+            </div>
+
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" required>
+            </div>
+
+            <button class="btn-save" type="submit">Tambah Customer</button>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>
