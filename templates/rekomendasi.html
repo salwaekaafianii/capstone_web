@@ -3,8 +3,6 @@
 {% block title %}Rekomendasi Tukang{% endblock %}
 
 {% block custom_css %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-
 <style>
     body {
         background-color: #f8f9fa;
@@ -32,13 +30,14 @@
         margin-bottom: 1rem;
         border-radius: 0.75rem;
         background-color: #fff;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                    0 2px 4px -1px rgba(0, 0, 0, 0.06);
         transition: 0.2s;
-        cursor: pointer; 
+        cursor: pointer;
     }
 
     .recommendation-card:hover {
-        box-shadow: 0 6px 10px rgba(0,0,0,0.12);
+        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.12);
     }
 
     .card-left {
@@ -73,37 +72,10 @@
         margin-bottom: 0.3rem;
     }
 
-    .star-icon {
-        color: #ffbf00;
-        font-size: 0.9rem;
-    }
-
-    .star-icon.inactive {
-        color: #ccc;
-    }
-
     .card-right {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-    }
-
-    .btn-chat {
-        background-color: transparent;
-        color: #ff8c00;
-        border: 1px solid #ff8c00;
-        padding: 0.5rem 0.8rem;
-        border-radius: 0.5rem;
-        font-size: 1rem;
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .btn-chat:hover {
-        color: #fff;
-        background-color: #ff8c00;
+        gap: 0.5rem;
     }
 
     .btn-order {
@@ -121,11 +93,38 @@
     .btn-order:hover {
         background-color: #e67600;
     }
+
+    .btn-chat {
+        background-color: #ff8c00;
+        color: #fff;
+        font-weight: 500;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-chat:hover {
+        background-color: #e67600;
+    }
+
+    .btn-chat i {
+        font-size: 1rem;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid mx-auto p-4">
+
+    {% if jenis %}
+    <p style="text-align:center; color:#555; margin-bottom:20px;">
+        Menampilkan tukang untuk menangani: <strong>{{ jenis }}</strong>
+    </p>
+    {% endif %}
 
     <div class="header-container">
         <h1>Rekomendasi Tukang</h1>
@@ -133,38 +132,33 @@
 
     <div class="space-y-4 pt-2">
         {% for tukang in tukangs %}
-        <a href="{{ url_for('lihat_tukang', tukang_id=tukang.id) }}" style="text-decoration: none;">
-            <div class="recommendation-card">
-                <div class="card-left">
-                    <div class="tukang-avatar">
-                        <img src="https://pengadaan.or.id/wp-content/uploads/2023/10/tukang-bangunan-1.jpg" alt="Foto {{ tukang.nama }}">
-                    </div>
-                    <div class="tukang-details">
-                        <p class="tukang-keahlian">{{ tukang.keahlian }}</p>
-                        <p class="tukang-nama">{{ tukang.nama }}</p>
-                        <div>
-                            {% set rating = tukang.rating|round(0, 'floor') %}
-                            {% for i in range(5) %}
-                                {% if i < rating %}
-                                    <i class="fas fa-star star-icon"></i>
-                                {% else %}
-                                    <i class="fas fa-star star-icon inactive"></i>
-                                {% endif %}
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
+            {% if tukang.similarity >= 0.1 %}
+                <a href="{{ url_for('lihat_tukang', tukang_id=tukang.id_tukang) }}" style="text-decoration: none;">
+                    <div class="recommendation-card">
 
-                <div class="card-right">
-                    <a href="{{ url_for('chat') }}" class="btn-chat" onclick="event.stopPropagation();">
-                        <i class="far fa-comment-dots"></i>
-                    </a>
-                    <a href="{{ url_for('lihat_tukang', tukang_id=tukang.id) }}" class="btn-order" onclick="event.stopPropagation();">
-                        Pesan Sekarang
-                    </a>
-                </div>
-            </div>
-        </a>
+                        <div class="card-left">
+                            <div class="tukang-avatar">
+                                <img src="{{ tukang.foto }}" alt="Foto {{ tukang.nama }}">
+                            </div>
+
+                            <div class="tukang-details">
+                                <p class="tukang-keahlian">{{ tukang.keahlian }}</p>
+                                <p class="tukang-nama">{{ tukang.nama }}</p>
+                            </div>
+                        </div>
+
+                        <div class="card-right">
+                            <a href="{{ url_for('chat') }}" class="btn-chat" onclick="event.stopPropagation();">
+                                <i class="far fa-comment-dots"></i>
+                            </a>
+                            <a href="{{ url_for('lihat_tukang', tukang_id=tukang.id_tukang) }}" class="btn-order">
+                                Pesan Sekarang
+                            </a>
+                        </div>
+
+                    </div>
+                </a>
+            {% endif %}
         {% endfor %}
     </div>
 </div>

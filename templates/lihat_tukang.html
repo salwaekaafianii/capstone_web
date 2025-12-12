@@ -3,8 +3,6 @@
 {% block title %}Profil Tukang{% endblock %}
 
 {% block custom_css %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-
 <style>
     body {
         background-color: #f8f9fa;
@@ -155,12 +153,12 @@
 
 {% block content %}
 <section class="profil-section">
-    <img src="https://pengadaan.or.id/wp-content/uploads/2023/10/tukang-bangunan-1.jpg" alt="Foto Tukang">
+    <img src="{{ tukang.foto }}" alt="Foto {{ tukang.nama }}">
     <div class="profil-info">
-        <h2>Ahmad Imam</h2>
-        <p><strong>Keahlian:</strong> Tukang bangunan, kontruksi pondasi, eksterior, renovasi</p>
+        <h2>{{ tukang.nama }}</h2>
+        <p><strong>Keahlian:</strong> {{ tukang.keahlian }}</p>
         <div class="profil-rating">
-            {% set rating = 4 %}
+            {% set rating = tukang.rating|default(4) %}
             {% for i in range(5) %}
                 {% if i < rating %}
                     <i class="fas fa-star star-icon"></i>
@@ -168,56 +166,47 @@
                     <i class="fas fa-star star-icon inactive"></i>
                 {% endif %}
             {% endfor %}
-            <span>4.3 dari 5 (50 pengguna)</span>
+            <span>{{ tukang.rating|default(4) }} dari 5 </span>
         </div>
     </div>
 </section>
 
 <section class="pengalaman-section">
     <h3>Pengalaman</h3>
+    <!-- Tampilkan lama pengalaman di atas list -->
+    <p><strong>Lama Pengalaman:</strong> {{ tukang.lama_pengalaman }}</p>
+
     <ul>
-        <li>Pembangunan Rumah</li>
-        <li>Renovasi Rumah</li>
-        <li>Pekerjaan Eksterior</li>
-        <li>Pembangunan Kolam Renang</li>
+        {% for item in tukang.pengalaman %}
+        <li>{{ item }}</li>
+        {% endfor %}
     </ul>
 </section>
+
 
 <section class="review-section">
     <div class="review-title">Ulasan Pengguna</div>
     <div class="review-header">
-        <span>⭐ 4.9 / 5</span>
-        <span>50 Pengguna</span>
+        <span>⭐ {{ tukang.rating|default(4) }} / 5</span>
     </div>
 
+    {% for review in tukang.ulasan %}
     <div class="review-item">
-        <img src="https://placehold.co/55x55" alt="Reviewer">
+        <img src="{{ review.foto|default('https://placehold.co/55x55') }}" alt="Reviewer">
         <div class="review-content">
-            <p><strong>Aufa</strong></p>
+            <p><strong>{{ review.nama }}</strong></p>
             <div>
-                <i class="fas fa-star star-icon"></i>
-                <i class="fas fa-star star-icon"></i>
-                <i class="fas fa-star star-icon"></i>
-                <i class="fas fa-star star-icon"></i>
-                <i class="fas fa-star star-icon"></i>
+                {% for i in range(5) %}
+                    {% if i < review.rating %}
+                        <i class="fas fa-star star-icon"></i>
+                    {% else %}
+                        <i class="fas fa-star star-icon inactive"></i>
+                    {% endif %}
+                {% endfor %}
             </div>
-            <p>Tekun, pekerjaannya cepat dan rapi.</p>
+            <p>{{ review.komentar }}</p>
         </div>
     </div>
-
-    <div class="review-item">
-        <img src="https://placehold.co/55x55" alt="Reviewer">
-        <div class="review-content">
-            <p><strong>Budi</strong></p>
-            <div>
-                <i class="fas fa-star star-icon"></i>
-                <i class="fas fa-star star-icon"></i>
-                <i class="fas fa-star star-icon"></i>
-                <i class="fas fa-star star-icon"></i>
-                <i class="fas fa-star star-icon inactive"></i>
-            </div>
-            <p>Pekerjaan sesuai permintaan dan hasil sangat bagus.</p>
-        </div>
-    </div>
+    {% endfor %}
 </section>
 {% endblock %}

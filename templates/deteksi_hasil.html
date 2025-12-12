@@ -36,7 +36,7 @@
         border-radius: 10px;
         border: 2px solid #eee;
         margin-bottom: 25px;
-        box-shadow: 0 3px 12px rgba(0,0,0,0.05);
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
     }
 
     .section-heading {
@@ -51,7 +51,7 @@
         background: #fff;
         padding: 20px;
         border-radius: 12px;
-        box-shadow: 0 3px 12px rgba(0,0,0,0.05);
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
         max-width: 700px;
         margin: 0 auto 20px auto;
     }
@@ -100,8 +100,7 @@
     <p class="subtext">Berikut hasil analisis kerusakan dari gambar yang kamu unggah</p>
 
     <!-- GAMBAR -->
-    <img src="{{ url_for('static', filename='uploads/' ~ gambar) }}" 
-         alt="Hasil Deteksi Kerusakan" class="result-image">
+    <img src="{{ url_for('static', filename='uploads/' ~ gambar) }}" alt="Hasil Deteksi Kerusakan" class="result-image">
 
     <!-- JENIS KERUSAKAN -->
     <div class="analysis-box">
@@ -115,14 +114,15 @@
     <!-- ANALISIS FAKTOR KERUSAKAN -->
     <div class="analysis-box">
         <p><strong>Analisis Faktor Penyebab:</strong></p>
-<p>{{ analisis }}</p>
+        <p>{{ analisis }}</p>
 
     </div>
 
     <!-- TOMBOL REKOMENDASI -->
-    <a href="{{ url_for('rekomendasi') }}" class="btn-rekomendasi">
+    <a href="{{ url_for('rekomendasi', jenis=hasil) }}" class="btn-rekomendasi">
         Rekomendasi Tukang
     </a>
+
 
 </div>
 {% endblock %}
