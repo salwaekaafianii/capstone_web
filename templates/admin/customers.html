@@ -2,143 +2,236 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Kelola Customer</title>
+    <title>Kelola Customer - Admin Teman Tukang</title>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 
     <style>
+        :root {
+            --main:#ff9800;
+            --hover:#e68900;
+            --text:#5a5c69;
+        }
+
         body {
-            margin: 0;
-            font-family: Arial;
-            background: #f4f4f4;
+            margin:0;
+            font-family:"Nunito",Arial,sans-serif;
+            background:#f8f9fc;
         }
 
-        .navbar {
-            background: #ff9800;
-            padding: 15px 25px;
-            color: white;
-            font-size: 22px;
-            font-weight: bold;
-        }
-
+        /* SIDEBAR */
         .sidebar {
-            width: 250px;
-            background: #ff9800;
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
-            padding-top: 70px;
-            color: white;
+            width:250px;
+            height:100vh;
+            position:fixed;
+            background:var(--main);
+            color:white;
+        }
+
+        .sidebar-header {
+            display:flex;
+            align-items:center;
+            gap:12px;
+            padding:20px;
+            font-weight:700;
+            font-size:15px;
+            border-bottom:1px solid rgba(255,255,255,.2);
         }
 
         .sidebar a {
-            display: block;
-            text-decoration: none;
-            padding: 14px 20px;
-            color: white;
-            font-size: 16px;
-            transition: 0.2s;
+            display:flex;
+            align-items:center;
+            gap:10px;
+            padding:14px 24px;
+            color:white;
+            text-decoration:none;
+            font-size:14px;
         }
 
         .sidebar a:hover {
-            background: #e68900;
+            background:rgba(255,255,255,.2);
         }
 
+        /* NAVBAR */
+        .navbar {
+            position:fixed;
+            left:250px;
+            right:0;
+            top:0;
+            height:70px;
+            background:white;
+            padding:0 30px;
+            box-shadow:0 0.15rem 1.75rem rgba(58,59,69,.15);
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            z-index:10;
+        }
+
+        .search-box {
+            display:flex;
+        }
+
+        .search-box input {
+            padding:9px 14px;
+            border-radius:6px 0 0 6px;
+            border:1px solid #d1d3e2;
+            width:260px;
+            outline:none;
+        }
+
+        .search-box button {
+            padding:9px 14px;
+            border:none;
+            background:var(--main);
+            color:white;
+            border-radius:0 6px 6px 0;
+            cursor:pointer;
+        }
+
+        .nav-right {
+            display:flex;
+            align-items:center;
+            gap:12px;
+            color:var(--text);
+        }
+
+        /* CONTENT */
         .content {
-            margin-left: 260px;
-            padding: 25px;
+            margin-left:250px;
+            padding:100px 30px 30px;
         }
 
-        .title {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 15px;
+        .page-header {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:25px;
+        }
+
+        .page-title {
+            font-size:26px;
+            font-weight:700;
+            color:var(--text);
         }
 
         .btn-add {
-            background: #ff9800;
-            padding: 10px 16px;
-            color: white;
-            border-radius: 6px;
-            text-decoration: none;
-            font-size: 14px;
+            background:var(--main);
+            padding:10px 18px;
+            color:white;
+            border-radius:6px;
+            text-decoration:none;
+            font-size:14px;
         }
 
         .btn-add:hover {
-            background: #e68900;
+            background:var(--hover);
+        }
+
+        /* TABLE */
+        .table-box {
+            background:white;
+            border-radius:10px;
+            box-shadow:0 0.15rem 1.75rem rgba(58,59,69,.15);
+            overflow:hidden;
         }
 
         table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
-            margin-top: 20px;
+            width:100%;
+            border-collapse:collapse;
         }
 
-        table th {
-            background: #ff9800;
-            color: white;
-            padding: 12px;
+        th {
+            background:var(--main);
+            padding:14px;
+            color:white;
+            font-size:14px;
+            text-align:left;
         }
 
-        table td {
-            padding: 12px;
-            border-bottom: 1px solid #eee;
+        td {
+            padding:14px;
+            border-bottom:1px solid #eee;
+            font-size:14px;
+            color:var(--text);
+            vertical-align:middle;
+        }
+
+        tr:hover {
+            background:#fff7ec;
+        }
+
+        /* ACTION */
+        .action-btns {
+            display:flex;
+            gap:8px;
+        }
+
+        .btn-edit,
+        .btn-delete {
+            padding:6px 12px;
+            border-radius:4px;
+            font-size:13px;
+            text-decoration:none;
+            color:white;
+            display:flex;
+            align-items:center;
+            gap:5px;
+            white-space:nowrap;
         }
 
         .btn-edit {
-            background: #4caf50;
-            padding: 6px 12px;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
+            background:#3498db;
         }
 
         .btn-delete {
-            background: #e53935;
-            padding: 6px 12px;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-        }
-
-        .btn-edit:hover {
-            background: #449d48;
-        }
-
-        .btn-delete:hover {
-            background: #c62828;
+            background:#e74c3c;
         }
     </style>
 </head>
 
 <body>
 
-    <div class="navbar">
-        Kelola Customer
+<div class="sidebar">
+    <div class="sidebar-header">
+        <i class="fas fa-tools"></i>
+        Admin Teman Tukang
     </div>
 
-    <div class="sidebar">
-        <a href="/admin">Dashboard</a>
-        <a href="/admin/tukang">Kelola Tukang</a>
-        <a href="/admin/customers">Kelola Customer</a>
-        <a href="/admin/orders">Kelola Pesanan</a>
-        <a href="/logout">Logout</a>
+    <a href="/admin"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+    <a href="/admin/tukang"><i class="fas fa-user-cog"></i> Kelola Tukang</a>
+    <a href="/admin/customers"><i class="fas fa-users"></i> Kelola Customer</a>
+    <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+</div>
+
+<div class="navbar">
+    <div class="search-box">
+        <input type="text" placeholder="Search for...">
+        <button><i class="fas fa-search"></i></button>
     </div>
 
-    <div class="content">
+    <div class="nav-right">
+        <i class="fas fa-user-circle"></i>
+        <span>Admin</span>
+    </div>
+</div>
 
-        <div class="title">Daftar Customer</div>
+<div class="content">
 
-        <a href="/admin/customers/add" class="btn-add">+ Tambah Customer</a>
+    <div class="page-header">
+        <div class="page-title">Kelola Customer</div>
+        <a href="/admin/customers/add" class="btn-add">
+            <i class="fas fa-plus"></i> Tambah Customer
+        </a>
+    </div>
 
+    <div class="table-box">
         <table>
             <tr>
                 <th>No</th>
                 <th>Nama</th>
                 <th>Email</th>
+                <th>Password</th>
                 <th>Aksi</th>
             </tr>
 
@@ -147,20 +240,25 @@
                 <td>{{ loop.index }}</td>
                 <td>{{ c.username }}</td>
                 <td>{{ c.email }}</td>
+                <td>{{ c.password }}</td>
                 <td>
-                    <a href="/admin/customers/edit/{{ c.id_users }}" class="btn-edit">Edit</a>
-                    <a href="/admin/customers/delete/{{ c.id_users }}" 
-                       class="btn-delete"
-                       onclick="return confirm('Yakin ingin menghapus customer ini?')">
-                       Hapus
-                    </a>
+                    <div class="action-btns">
+                        <a class="btn-edit" href="/admin/customers/edit/{{ c.id_users }}">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <a class="btn-delete"
+                           href="/admin/customers/delete/{{ c.id_users }}"
+                           onclick="return confirm('Hapus customer ini?')">
+                            <i class="fas fa-trash"></i> Hapus
+                        </a>
+                    </div>
                 </td>
             </tr>
             {% endfor %}
-
         </table>
-
     </div>
+
+</div>
 
 </body>
 </html>

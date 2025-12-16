@@ -2,104 +2,83 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Tambah Customer</title>
+    <title>Tambah Customer - Admin Teman Tukang</title>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+
     <style>
-        body {
-            margin: 0;
-            font-family: Arial;
-            background: #f4f4f4;
+        :root{--main:#ff9800;--hover:#e68900;--text:#5a5c69}
+        body{margin:0;font-family:"Nunito",Arial,sans-serif;background:#f8f9fc}
+
+        .sidebar{width:250px;height:100vh;position:fixed;background:var(--main);color:white}
+        .sidebar-header{display:flex;align-items:center;gap:12px;padding:20px;font-weight:700;border-bottom:1px solid rgba(255,255,255,.2)}
+        .sidebar a{display:flex;align-items:center;gap:10px;padding:14px 24px;color:white;text-decoration:none;font-size:14px}
+        .sidebar a:hover{background:rgba(255,255,255,.2)}
+
+        .navbar{position:fixed;left:250px;right:0;top:0;height:70px;background:white;padding:0 30px;
+        box-shadow:0 0.15rem 1.75rem rgba(58,59,69,.15);display:flex;align-items:center;justify-content:space-between}
+
+        .content{margin-left:250px;padding:100px 30px}
+
+        .form-box{
+            background:white;
+            max-width:500px;
+            padding:25px;
+            border-radius:10px;
+            box-shadow:0 0.15rem 1.75rem rgba(58,59,69,.15)
         }
-        .navbar {
-            background: #ff9800;
-            padding: 15px 25px;
-            color: white;
-            font-size: 22px;
-            font-weight: bold;
+
+        label{font-size:14px;font-weight:600;color:var(--text)}
+        input{
+            width:100%;
+            padding:10px;
+            margin:8px 0 16px;
+            border-radius:6px;
+            border:1px solid #ddd
         }
-        .sidebar {
-            width: 250px;
-            background: #ff9800;
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
-            padding-top: 70px;
-            color: white;
+
+        .btn-save{
+            background:var(--main);
+            color:white;
+            padding:10px 16px;
+            border:none;
+            border-radius:6px;
+            cursor:pointer
         }
-        .sidebar a {
-            display: block;
-            text-decoration: none;
-            padding: 14px 20px;
-            color: white;
-            font-size: 16px;
-        }
-        .sidebar a:hover {
-            background: #e68900;
-        }
-        .content {
-            margin-left: 260px;
-            padding: 25px;
-        }
-        .form-box {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.12);
-            max-width: 500px;
-        }
-        .form-group {
-            margin-bottom: 12px;
-        }
-        input[type=text], input[type=email], input[type=password] {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-        }
-        .btn-save {
-            background: #ff9800;
-            padding: 10px 16px;
-            border: none;
-            color: white;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        .btn-save:hover {
-            background: #e68900;
-        }
+        .btn-save:hover{background:var(--hover)}
     </style>
 </head>
+
 <body>
 
-<div class="navbar">Tambah Customer</div>
-
 <div class="sidebar">
-    <a href="/admin">Dashboard</a>
-    <a href="/admin/tukang">Kelola Tukang</a>
-    <a href="/admin/customers">Kelola Customer</a>
-    <a href="/admin/orders">Kelola Pesanan</a>
-    <a href="/logout">Logout</a>
+    <div class="sidebar-header">
+        <i class="fas fa-tools"></i> Admin Teman Tukang
+    </div>
+    <a href="/admin"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+    <a href="/admin/tukang"><i class="fas fa-user-cog"></i> Kelola Tukang</a>
+    <a href="/admin/customers"><i class="fas fa-users"></i> Kelola Customer</a>
+    <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+</div>
+
+<div class="navbar">
+    <strong>Tambah Customer</strong>
+    <div><i class="fas fa-user-circle"></i> Admin</div>
 </div>
 
 <div class="content">
     <div class="form-box">
-        <form action="/admin/customers/add" method="POST">
-            <div class="form-group">
-                <label>Username</label>
-                <input type="text" name="username" required>
-            </div>
+        <form method="POST">
+            <label>Username</label>
+            <input type="text" name="username" required>
 
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" name="email" required>
-            </div>
+            <label>Email</label>
+            <input type="email" name="email" required>
 
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" name="password" required>
-            </div>
+            <label>Password</label>
+            <input type="password" name="password" required>
 
-            <button class="btn-save" type="submit">Tambah Customer</button>
+            <button class="btn-save">Simpan</button>
         </form>
     </div>
 </div>

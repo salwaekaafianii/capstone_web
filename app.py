@@ -1,11 +1,9 @@
-from flask import (
-    Flask, render_template, redirect, url_for, jsonify,
-    request, session, flash
-)
+from flask import Flask, render_template, redirect, url_for, jsonify, request, session, flash
 import mysql.connector
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 from PIL import Image
+from functools import wraps
 import numpy as np
 import os
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -16,7 +14,6 @@ import joblib
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'kunci-rahasia-teman-tukang-yang-kuat'
 
-# --- KONEKSI DATABASE ---
 db = mysql.connector.connect(
     host="localhost",
     user="root",
@@ -25,21 +22,7 @@ db = mysql.connector.connect(
 )
 cursor = db.cursor(dictionary=True)
 
-cursor.execute("SELECT * FROM tukang")
-TUKANG_DATA = cursor.fetchall()  # Disimpan global, tidak query ulang
-
-# Buat dokumen untuk TF-IDF
-dokumen_tukang = [f"{t['keahlian']} {t['pengalaman']}" for t in TUKANG_DATA]
-
-# Siapkan vectorizer & matrix (hanya sekali)
-vectorizer = TfidfVectorizer()
-TFIDF_MATRIX = vectorizer.fit_transform(dokumen_tukang)
-
-print("TF-IDF tukang berhasil di-load (cached)")
-
-from functools import wraps
-
-# --- LOAD MODEL CNN ---
+# model cnn
 model = load_model("model/model_temantukang.keras")
 labels = ["Retak Dinding", "Plafon Rusak", "Keramik Rusak", "Cat Mengelupas", "Kayu Kusen Lapuk", "Dinding Berjamur"]
 
@@ -51,7 +34,8 @@ analisis_faktor = {
     "Kayu Kusen Lapuk": "Kusen kayu dapat lapuk karena paparan air, kelembaban tinggi, atau serangan jamur dan rayap, sehingga kayu kehilangan kekuatan strukturalnya.",
     "Dinding Berjamur": "Dinding berjamur terjadi akibat kelembaban berlebih, ventilasi yang buruk, atau rembesan air yang terus-menerus, sehingga jamur berkembang di permukaan dinding.",
 }
-
+ 
+# model review
 svm_model = joblib.load('model/svm_model.pkl')
 tfidf = joblib.load('model/tfidf_vectorizer.pkl')
 
@@ -61,7 +45,6 @@ def predict_sentiment(text):
 
     return "positif" if result == 1 else "negatif"
 
-
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -70,6 +53,44 @@ def login_required(f):
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
+
+# cbf (content based filtering - rekomendasi perhitungan)
+cursor.execute("SELECT * FROM tukang")
+TUKANG_DATA = cursor.fetchall() 
+
+dokumen_tukang = [f"{t['keahlian']} {t['pengalaman']}" for t in TUKANG_DATA]
+
+vectorizer = TfidfVectorizer()
+TFIDF_MATRIX = vectorizer.fit_transform(dokumen_tukang)
+
+print("TF-IDF tukang berhasil di-load (cached)")
+
+# api 
+@app.route("/api/rekomendasi")
+def api_rekomendasi():
+    jenis_kerusakan = request.args.get('jenis', None)
+
+    if not jenis_kerusakan:
+        return jsonify({"status": "error", "message": "Jenis kerusakan tidak ditemukan"}), 400
+
+    query_vec = vectorizer.transform([jenis_kerusakan])
+    sim_scores = cosine_similarity(query_vec, TFIDF_MATRIX).flatten()
+
+    rekomendasi_list = []
+    for i, t in enumerate(TUKANG_DATA):
+        if sim_scores[i] >= 0.1:
+            rekomendasi_list.append({
+                "id_tukang": t["id_tukang"],
+                "nama": t["nama"],
+                "keahlian": t["keahlian"],
+                "pengalaman": t["pengalaman"],
+                "foto": t.get("foto", "https://placehold.co/80x80"),
+                "similarity": float(sim_scores[i])
+            })
+
+    rekomendasi_list = sorted(rekomendasi_list, key=lambda x: x["similarity"], reverse=True)
+
+    return jsonify({"status": "success", "rekomendasi": rekomendasi_list})
 
 @app.route('/api/review', methods=['POST'])
 def add_review():
@@ -116,21 +137,22 @@ def add_review():
     except Exception as e:
         db.rollback()
         return jsonify({"status": "error", "message": str(e)}), 500
-
-# --- ROUTES UTAMA ---
-@app.route('/')
-def index():
-    return redirect(url_for('dashboard'))
+    
+# route admin
 @app.route('/admin')
 def admin_dashboard():
     if 'user_role' not in session or session['user_role'] != 'admin':
         flash("Akses ditolak!", "danger")
-        return redirect(url_for('login'))
+        return redirect(url_for('login_admin'))
 
-    cursor.execute("SELECT COUNT(*) AS total FROM users WHERE role='tukang'")
+    cursor.execute("SELECT COUNT(*) AS total FROM tukang")
     total_tukang = cursor.fetchone()['total']
-
-    cursor.execute("SELECT COUNT(*) AS total FROM users WHERE role='customer'")
+    
+    cursor.execute("""
+        SELECT COUNT(*) AS total
+        FROM users
+        WHERE role = 'customer'
+    """)
     total_customer = cursor.fetchone()['total']
 
     return render_template(
@@ -138,7 +160,7 @@ def admin_dashboard():
         total_tukang=total_tukang,
         total_customer=total_customer
     )
-    
+
 @app.route('/login/admin', methods=['GET', 'POST'])
 def login_admin():
     if request.method == 'POST':
@@ -164,6 +186,146 @@ def login_admin():
 
     return render_template('admin/login_admin.html')
 
+# kelola customer
+@app.route('/admin/customers')
+def kelola_customers():
+    cursor.execute("SELECT * FROM users WHERE role = 'customer'")
+    customers = cursor.fetchall()
+
+    if request.args.get('json') == 'true':
+        return jsonify(customers)
+
+    return render_template('admin/customers.html', customers=customers)
+
+@app.route('/admin/customers/add', methods=['GET', 'POST'])
+def add_customer():
+    if request.method == 'POST':
+        if request.is_json:
+            data = request.get_json()
+            username = data.get('username')
+            email = data.get('email')
+            password = data.get('password')
+        else:
+            username = request.form.get('username')
+            email = request.form.get('email')
+            password = request.form.get('password')
+
+        cursor.execute(
+            """
+            INSERT INTO users (username, email, password, role)
+            VALUES (%s, %s, %s, 'customer')
+            """,
+            (username, email, password)
+        )
+        db.commit()
+
+        if request.is_json:
+            return jsonify({"message": "Customer berhasil ditambahkan!"}), 201
+
+        flash("Customer berhasil ditambahkan!", "success")
+        return redirect(url_for('kelola_customers'))
+
+    return render_template('admin/add_customer.html')
+
+@app.route('/admin/customers/edit/<int:id>', methods=['GET', 'POST'])
+def edit_customer(id):
+    cursor.execute("SELECT * FROM users WHERE id_users=%s", (id,))
+    customer = cursor.fetchone()
+
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+
+        cursor.execute(
+            "UPDATE users SET username=%s, email=%s, password=%s WHERE id_users=%s",
+            (username, email, password, id)
+        )
+        db.commit()
+
+        return redirect('/admin/customers')
+
+    return render_template('admin/edit_customer.html', customer=customer)
+
+@app.route('/admin/customers/delete/<int:id>', methods=['GET', 'DELETE'])
+def delete_customer(id):
+    cursor.execute("DELETE FROM users WHERE id_users=%s", (id,))
+    db.commit()
+
+    if request.method == 'DELETE':
+        return jsonify({"message": "Customer berhasil dihapus!"})
+
+    flash("Customer berhasil dihapus!", "success")
+    return redirect(url_for('kelola_customers'))
+
+# kelola tukang
+@app.route('/admin/tukang')
+def kelola_tukang():
+    cursor.execute("SELECT * FROM tukang")
+    tukang = cursor.fetchall()
+    return render_template('admin/tukang.html', tukang=tukang)
+
+
+@app.route('/admin/tukang/add', methods=['GET','POST'])
+def add_tukang():
+    if request.method == 'POST':
+        nama = request.form['nama']
+        keahlian = request.form['keahlian']
+        pengalaman = request.form['pengalaman']
+        foto = request.form['foto']
+
+        cursor.execute("""
+            INSERT INTO tukang (nama, keahlian, pengalaman, foto, rating)
+            VALUES (%s,%s,%s,%s,0)
+        """,(nama,keahlian,pengalaman,foto))
+        db.commit()
+
+        flash("Tukang berhasil ditambahkan","success")
+        return redirect('/admin/tukang')
+
+    return render_template('admin/add_tukang.html')
+
+
+@app.route('/admin/tukang/edit/<int:id>', methods=['GET','POST'])
+def edit_tukang(id):
+    cursor.execute("SELECT * FROM tukang WHERE id_tukang=%s",(id,))
+    tukang = cursor.fetchone()
+
+    if not tukang:
+        flash("Tukang tidak ditemukan","danger")
+        return redirect('/admin/tukang')
+
+    if request.method == 'POST':
+        nama = request.form['nama']
+        keahlian = request.form['keahlian']
+        pengalaman = request.form['pengalaman']
+        foto = request.form['foto']
+
+        cursor.execute("""
+            UPDATE tukang SET
+            nama=%s, keahlian=%s, pengalaman=%s, foto=%s
+            WHERE id_tukang=%s
+        """,(nama,keahlian,pengalaman,foto,id))
+        db.commit()
+
+        flash("Tukang berhasil diupdate","success")
+        return redirect('/admin/tukang')
+
+    return render_template('admin/edit_tukang.html', t=tukang)
+
+
+@app.route('/admin/tukang/delete/<int:id>')
+def delete_tukang(id):
+    cursor.execute("DELETE FROM tukang WHERE id_tukang=%s",(id,))
+    db.commit()
+    flash("Tukang berhasil dihapus","success")
+    return redirect('/admin/tukang')
+
+# route tampilan customer
+@app.route('/')
+def index():
+    return redirect(url_for('dashboard'))
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -177,7 +339,6 @@ def login():
             flash("Email tidak terdaftar!", "danger")
             return redirect(url_for('login'))
 
-        # CEGAH ADMIN LOGIN DI ROUTE INI
         if user['role'] == 'admin':
             flash("Gunakan halaman login admin!", "danger")
             return redirect(url_for('login_admin'))
@@ -249,7 +410,6 @@ def riwayat_pesanan():
 @login_required
 def tulis_ulasan(order_id):
 
-    # ambil order
     cursor.execute(
         "SELECT tukang_id FROM orders WHERE id_order=%s",
         (order_id,)
@@ -267,16 +427,13 @@ def tulis_ulasan(order_id):
         rating = request.form['rating']
         review_text = request.form['ulasan']
 
-        # 🔮 PREDIKSI SENTIMENT
         sentiment = predict_sentiment(review_text)
 
-        # 💾 SIMPAN REVIEW
         cursor.execute("""
             INSERT INTO review (user_id, tukang_id, review_text, sentiment, rating)
             VALUES (%s, %s, %s, %s, %s)
         """, (user_id, tukang_id, review_text, sentiment, rating))
 
-        # ⭐ UPDATE RATING TUKANG
         cursor.execute("""
             UPDATE tukang
             SET 
@@ -334,6 +491,32 @@ def deteksi():
 
     return render_template("deteksi.html")
 
+@app.route('/booking', methods=['GET', 'POST'])
+def booking():
+    if 'user_id' not in session:
+        flash("Silakan login terlebih dahulu.", "warning")
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        tanggal = request.form.get('date', '')
+        waktu = request.form.get('time', '')
+        opsi = request.form.get('price_option', '')
+        custom = request.form.get('custom_price', '')
+
+        try:
+            if opsi == 'custom':
+                harga = int(custom) if custom else 0
+            else:
+                harga = int(opsi) if opsi else 0
+        except ValueError:
+            flash("Masukkan angka yang valid.", "danger")
+            return redirect(url_for('booking'))
+
+        flash(f"Terpilih: {tanggal} {waktu} — Rp {harga:,}", "success")
+        return redirect(url_for('booking'))
+
+    return render_template('booking.html')
+
 @app.route("/rekomendasi")
 def rekomendasi():
     jenis_kerusakan = request.args.get('jenis', None)
@@ -342,14 +525,12 @@ def rekomendasi():
         flash("Jenis kerusakan tidak ditemukan.", "warning")
         return redirect(url_for('dashboard'))
 
-    # Hitung similarity
     query_vec = vectorizer.transform([jenis_kerusakan])
     sim_scores = cosine_similarity(query_vec, TFIDF_MATRIX).flatten()
 
-    # Siapkan data untuk template, hanya yang similarity >= 0.5
     rekomendasi_list = []
     for i, t in enumerate(TUKANG_DATA):
-        if sim_scores[i] >= 0.1:  # filter kemiripan >= 0.5
+        if sim_scores[i] >= 0.1:  
             rekomendasi_list.append({
                 "id_tukang": t["id_tukang"],
                 "nama": t["nama"],
@@ -359,14 +540,12 @@ def rekomendasi():
                 "similarity": float(sim_scores[i])
             })
 
-    # Urutkan berdasarkan similarity tertinggi
     rekomendasi_list = sorted(rekomendasi_list, key=lambda x: x["similarity"], reverse=True)
 
     return render_template("rekomendasi.html", tukangs=rekomendasi_list, jenis=jenis_kerusakan)
 
 @app.route("/lihat-tukang/<int:tukang_id>")
 def lihat_tukang(tukang_id):
-    # Ambil data tukang sesuai id_tukang
     cursor.execute("SELECT * FROM tukang WHERE id_tukang=%s", (tukang_id,))
     tukang = cursor.fetchone()
 
@@ -374,13 +553,10 @@ def lihat_tukang(tukang_id):
         flash("Tukang tidak ditemukan.", "warning")
         return redirect(url_for("rekomendasi"))
 
-    # Pastikan data rating dan jumlah_ulasan ada untuk template
     tukang.setdefault("rating", 0)
     tukang.setdefault("jumlah_ulasan", 0)
     tukang.setdefault("foto", "https://placehold.co/150x150")
 
-    # --- PERBAIKI BAGIAN PENGALAMAN ---
-    # Jika pengalaman ada dan berbentuk string, ubah jadi list
     pengalaman_str = tukang.get("pengalaman", "")
     tukang["pengalaman"] = [x.strip() for x in pengalaman_str.split(",") if x.strip()]
     cursor.execute("""
@@ -397,7 +573,6 @@ def lihat_tukang(tukang_id):
     
     reviews = cursor.fetchall()
 
-    # ⭐ TAMBAHAN DI SINI ⭐
     total_ulasan = len(reviews)
     negatif = sum(1 for r in reviews if r["sentiment"] == "negatif")
 
@@ -407,9 +582,7 @@ def lihat_tukang(tukang_id):
 
     tukang["persentase_negatif"] = persentase_negatif
     tukang["total_ulasan"] = total_ulasan
-    # ⭐ SAMPAI SINI ⭐
-
-    # Format untuk template
+   
     tukang["ulasan"] = [
         {
             "nama": r["nama"],
@@ -423,7 +596,6 @@ def lihat_tukang(tukang_id):
 
     return render_template("lihat_tukang.html", tukang=tukang)
 
-# --- PROFIL & CHAT ---
 @app.route("/chat")
 @login_required
 def chat():
@@ -445,279 +617,7 @@ def notifikasi():
         {"pesan": "Tukang Agus mengirim pesan baru", "detail": "“Apakah warna keramiknya putih polos?”", "tanggal": "06/11/2025"}
     ]
     return render_template("notifikasi.html", notifications=notifications, active_page="notifikasi")
-# HALAMAN ADMIN KELOLA CUSTOMER
-@app.route('/admin/customers')
-def kelola_customers():
-    cursor.execute("SELECT * FROM users WHERE role = 'customer'")
-    customers = cursor.fetchall()
 
-    # Jika request minta JSON (untuk Postman)
-    if request.args.get('json') == 'true':
-        return jsonify(customers)
-
-    # Default: tampilkan HTML
-    return render_template('admin/customers.html', customers=customers)
-
-
-from flask import request, jsonify, render_template, redirect, url_for, flash
-
-
-@app.route('/admin/customers/add', methods=['GET', 'POST'])
-def add_customer():
-    if request.method == 'POST':
-        # Jika request JSON (Postman)
-        if request.is_json:
-            data = request.get_json()
-            username = data.get('username')
-            email = data.get('email')
-            password = data.get('password')
-        else:
-            # Request dari form HTML
-            username = request.form.get('username')
-            email = request.form.get('email')
-            password = request.form.get('password')
-
-        # Insert ke database
-        cursor.execute(
-            """
-            INSERT INTO users (username, email, password, role)
-            VALUES (%s, %s, %s, 'customer')
-            """,
-            (username, email, password)
-        )
-        db.commit()
-
-        # Respon untuk JSON
-        if request.is_json:
-            return jsonify({"message": "Customer berhasil ditambahkan!"}), 201
-
-        # Respon untuk HTML
-        flash("Customer berhasil ditambahkan!", "success")
-        return redirect(url_for('kelola_customers'))
-
-    # Jika GET → tampilkan form add_customer.html
-    return render_template('admin/add_customer.html')
-
-
-@app.route('/admin/customers/edit/<int:id>', methods=['GET', 'POST', 'PUT'])
-def edit_customer(id):
-    # Ambil data customer dari database
-    cursor.execute("SELECT * FROM users WHERE id_users=%s", (id,))
-    customer = cursor.fetchone()
-
-    if request.method == 'POST' or request.method == 'PUT':
-        # Jika request dari Postman (JSON)
-        if request.is_json:
-            data = request.get_json()
-            username = data.get('username')
-            email = data.get('email')
-        else:
-            # Request dari form HTML
-            username = request.form.get('username')
-            email = request.form.get('email')
-
-        # Update database
-        cursor.execute(
-            """
-            UPDATE users 
-            SET username=%s, email=%s 
-            WHERE id_users=%s
-            """,
-            (username, email, id)
-        )
-        db.commit()
-
-        # Respon untuk JSON
-        if request.is_json:
-            return jsonify({"message": "Customer berhasil diperbarui!"})
-
-        # Respon untuk HTML
-        flash("Customer berhasil diperbarui!", "success")
-        return redirect(url_for('kelola_customers'))
-
-    # Jika GET → tampilkan halaman edit_customer.html
-    return render_template('admin/edit_customer.html', customer=customer)
-
-
-@app.route('/admin/customers/update/<int:id>', methods=['PATCH'])
-def patch_customer(id):
-    data = request.get_json()
-
-    # Ambil data lama
-    cursor.execute("SELECT username, email FROM users WHERE id_users=%s", (id,))
-    old = cursor.fetchone()
-
-    if not old:
-        return jsonify({"error": "Customer tidak ditemukan"}), 404
-
-    username = data.get('username', old['username'])
-    email = data.get('email', old['email'])
-
-    cursor.execute(
-        """
-        UPDATE users SET username=%s, email=%s WHERE id_users=%s
-        """,
-        (username, email, id)
-    )
-    db.commit()
-
-    return jsonify({"message": "Customer berhasil diupdate (PATCH)!"})
-
-
-@app.route('/admin/customers/delete/<int:id>', methods=['GET', 'DELETE'])
-def delete_customer(id):
-    # Hapus data customer
-    cursor.execute("DELETE FROM users WHERE id_users=%s", (id,))
-    db.commit()
-
-    # Respon untuk Postman (DELETE)
-    if request.method == 'DELETE':
-        return jsonify({"message": "Customer berhasil dihapus!"})
-
-    # Respon untuk browser (GET)
-    flash("Customer berhasil dihapus!", "success")
-    return redirect(url_for('kelola_customers'))
-
-@app.route('/admin/tukang')
-def kelola_tukang():
-    cursor.execute("SELECT * FROM users WHERE role = 'tukang'")
-    tukang = cursor.fetchall()
-
-    # Jika request minta JSON (untuk Postman)
-    if request.args.get('json') == 'true':
-        return jsonify(tukang)
-
-    # Default: tampilkan HTML
-    return render_template('admin/tukang.html', tukang=tukang, form_type=None)
-
-
-@app.route('/admin/tukang/add', methods=['GET', 'POST'])
-def add_tukang():
-
-    # Jika request POST dan dari Postman (JSON)
-    if request.method == 'POST' and request.is_json:
-        data = request.get_json()
-        username = data.get('username')
-        email = data.get('email')
-        password = data.get('password')
-
-        cursor.execute(
-            """
-            INSERT INTO users (username, email, password, role)
-            VALUES (%s, %s, %s, 'tukang')
-            """,
-            (username, email, password)
-        )
-        db.commit()
-
-        return jsonify({"message": "Tukang berhasil ditambahkan!"}), 201
-
-    # Jika POST dari Form HTML
-    if request.method == 'POST':
-        username = request.form['username']
-        email = request.form['email']
-        password = request.form['password']
-
-        cursor.execute(
-            """
-            INSERT INTO users (username, email, password, role)
-            VALUES (%s, %s, %s, 'tukang')
-            """,
-            (username, email, password)
-        )
-        db.commit()
-
-        return redirect('/admin/tukang')
-
-    # Jika GET → tampilkan form HTML
-    return render_template("admin/add_tukang.html", tukang=[], form_type="add", data=None)
-
-
-@app.route('/admin/tukang/edit/<int:id>', methods=['GET', 'POST', 'PUT'])
-def edit_tukang(id):
-
-    # Ambil data tukang berdasarkan ID
-    cursor.execute("SELECT * FROM users WHERE id_users=%s", (id,))
-    data = cursor.fetchone()
-
-    # Jika request dari Postman (JSON)
-    if request.method in ['POST', 'PUT'] and request.is_json:
-        req = request.get_json()
-        username = req.get('username')
-        email = req.get('email')
-
-        cursor.execute(
-            """
-            UPDATE users 
-            SET username=%s, email=%s 
-            WHERE id_users=%s
-            """,
-            (username, email, id)
-        )
-        db.commit()
-
-        return jsonify({"message": "Tukang berhasil diperbarui!"})
-
-    # Jika request POST dari HTML form
-    if request.method == 'POST':
-        username = request.form['username']
-        email = request.form['email']
-
-        cursor.execute(
-            """
-            UPDATE users 
-            SET username=%s, email=%s 
-            WHERE id_users=%s
-            """,
-            (username, email, id)
-        )
-        db.commit()
-
-        return redirect('/admin/tukang')
-
-    # Jika GET → tampilkan form edit HTML
-    return render_template("admin/edit_tukang.html", tukang=[], form_type="edit", data=data)
-
-
-@app.route('/admin/tukang/update/<int:id>', methods=['PATCH'])
-def patch_tukang(id):
-    data = request.get_json()
-
-    cursor.execute("SELECT username, email FROM users WHERE id_users=%s", (id,))
-    old = cursor.fetchone()
-
-    if not old:
-        return jsonify({"error": "Tukang tidak ditemukan"}), 404
-
-    username = data.get('username', old['username'])
-    email = data.get('email', old['email'])
-
-    cursor.execute(
-        """
-        UPDATE users SET username=%s, email=%s WHERE id_users=%s
-        """,
-        (username, email, id)
-    )
-    db.commit()
-
-    return jsonify({"message": "Tukang berhasil diupdate (PATCH)!"})
-
-
-@app.route('/admin/tukang/delete/<int:id>', methods=['GET', 'DELETE'])
-def delete_tukang(id):
-    cursor.execute("DELETE FROM users WHERE id_users=%s", (id,))
-    db.commit()
-
-    if request.method == 'GET':
-        flash("Tukang berhasil dihapus", "success")
-        return redirect('/admin/tukang')
-
-    # Jika method DELETE (Postman)
-    return jsonify({
-        "message": "Tukang berhasil dihapus"
-    })
-
-# --- LOGOUT ---
 @app.route('/logout')
 def logout():
     session.clear()
